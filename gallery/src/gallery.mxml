@@ -1,0 +1,262 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Application xmlns:mx="http://www.adobe.com/2006/mxml" layout="absolute" xmlns:gallery="*" creationComplete="getGalleryList.send(), init()" height="1000" width="100%">
+	<mx:Style>
+        global {
+            modalTransparencyBlur: 0;
+            modalTransparency: 0.9;
+            modalTransparencyColor: black;
+            modalTransparencyDuration: 500;
+        }
+    </mx:Style>
+ 
+    <mx:Script>
+        <![CDATA[
+        	import mx.collections.ArrayCollection;
+        	import mx.rpc.events.ResultEvent;
+            import mx.controls.Image;
+            import mx.managers.PopUpManager;
+ 
+ 			private function init()
+ 			{
+				getPhoto.send();
+				new_gallery_input.addEventListener(KeyboardEvent.KEY_UP, addGalleryChange);
+				new_gallery_input.addEventListener(MouseEvent.MOUSE_UP, addGalleryChange);
+
+ 			}
+ 			
+			private function populateGalleryList(event:ResultEvent)
+			{
+				var data:String = event.result.toString();
+				var galleries:Array = data.split('.');
+				var element:Array;
+				var myDataProvider:Array = [];
+				
+				for each (var sld:String in galleries) {
+					if (sld != "") {
+				 		element = sld.split(',');
+				   		myDataProvider.push( { label: element[1], data: element[0] } );
+					} 
+				}
+				
+				galleryId.dataProvider = myDataProvider;
+				
+			}
+			
+            private function img_complete(evt:Event):void {
+                var img:Image = evt.currentTarget as Image;
+                img.width = img.contentWidth;
+                img.height = img.contentHeight;
+                PopUpManager.centerPopUp(img);
+            }
+ 
+            private function img_click(evt:MouseEvent):void {
+                var img:Image = evt.currentTarget as Image;
+                PopUpManager.removePopUp(img);
+            }
+            
+            private function addNew()
+            {
+            	des.text = "";
+            	title.text = ""; 
+            	dgPhoto.selectedIndex = -1;
+
+           		disableUI();
+            }
+        ]]>
+    </mx:Script>
+	
+		<mx:HTTPService
+	        id="getGalleryList"
+	        url="http://mojapoljoprivreda.rs.sr/index.php/adminv2/gallery/list"
+	        resultFormat="e4x"
+	        result="populateGalleryList(event)"
+	        useProxy="false" />
+		<mx:HTTPService
+	        id="getPhoto"
+	        url="http://mojapoljoprivreda.rs.sr/index.php/adminv2/gallery/get"
+	        method="GET"
+	        resultFormat="e4x"
+	        useProxy="false">
+	        <mx:request>
+		         <gallery>{galleryId.value}</gallery>
+	         </mx:request>
+	    </mx:HTTPService>
+        <mx:HTTPService id="postNewGallery" url="http://mojapoljoprivreda.rs.sr/index.php/adminv2/gallery/put" method="POST" contentType="application/x-www-form-urlencoded" resultFormat="text" result="doPostNewGalleryClear()">
+	         <mx:request>
+		         <id_parent>{galleryId.value}</id_parent>
+		         <title>{new_gallery_input.text}</title>
+		         <isroot>{isroot.selected}</isroot>
+	         </mx:request>
+         </mx:HTTPService>
+                 
+        <mx:HTTPService id="postPhoto" url="http://mojapoljoprivreda.rs.sr/index.php/adminv2/gallery/post" method="POST" contentType="application/x-www-form-urlencoded" resultFormat="text" result="thanks2(event)">
+	         <mx:request>
+		         <id>{id_.text}</id>
+		         <title>{title.text}</title>
+		         <description>{des.text}</description>
+		         <image>{loader2.imglink.text}</image>
+		         <gallery>{galleryId.value}</gallery>
+	         </mx:request>
+         </mx:HTTPService>
+
+         <mx:HTTPService id="deletePhoto" showBusyCursor="true" url="http://mojapoljoprivreda.rs.sr/index.php/adminv2/gallery/delete" method="POST" contentType="application/x-www-form-urlencoded" resultFormat="text" result="thanks1(event)" >
+	         <mx:request>
+	         	<id>{id_.text}</id>
+	         </mx:request>
+         </mx:HTTPService>
+
+<mx:Script>
+<![CDATA[
+    import mx.managers.PopUpManager
+    import mx.controls.Alert;
+   	import mx.events.CloseEvent;
+   	
+   	private function deleteInfo():void{
+   		if (id_.text != "") {
+			deletePhoto.send()
+   		} else {
+   			mx.controls.Alert.show("Slajd nije selektovan!")
+   		}
+    }
+    
+  	private function thanks1(evt:Event):void{
+		
+   	}
+   	
+   	private function addGalleryChange(evt:Event):void
+   	{
+   		if (new_gallery_input.text.length > 0) {
+   			
+   			add_new_gallery_btn.enabled = true;
+   		} else {
+   			
+   			add_new_gallery_btn.enabled = false;
+   		}
+
+   	}
+   	
+    private function titleWindow_close(evt:CloseEvent):void {
+		PopUpManager.removePopUp(this)
+    }
+	
+	private function doPostNewGallery():void {
+
+		postNewGallery.send()
+	}
+	
+	private function doPostNewGalleryClear():void {
+
+		new_gallery_input.text = "";
+		add_new_gallery_btn.enabled = false;
+		getGalleryList.send();
+	}
+	
+	private function sendInfo():void {
+	    if(loader2.imglink.text.length == 0 || des.text.length == 0 || title.text.length == 0){
+			mx.controls.Alert.show("Nisu uneti svi neophodni parametri!")
+	    } else {
+			postPhoto.send()
+	    }
+	}
+	
+   	private function thanks2(evt:Event):void{
+	    if(String(postPhoto.lastResult)!="1") {
+	    	mx.controls.Alert.show("Greška tokom dodavanja slajda")
+	   	} else {
+
+			enableUI();
+	   	}
+   	}           
+   	private function enableUI()
+   	{
+       des.editable = false;
+        title.editable = false;
+        addbtn.enabled = true;
+        updatebtn.enabled = true;
+        dgPhoto.enabled = true;
+        deletebtn.enabled = true;
+        canclebtn.enabled = false;
+        loader2.browse.enabled = false;
+        if (dgPhoto.selectedIndex == -1) {
+        	dgPhoto.selectedIndex = dgPhoto.rowCount - 1;
+        }
+   	}
+   	
+    private function disableUI()
+   	{
+       des.editable = true;
+        title.editable = true;
+        dgPhoto.enabled = false;
+        addbtn.enabled = false;
+        updatebtn.enabled = false;
+        deletebtn.enabled = false;
+        canclebtn.enabled = true;
+        loader2.browse.enabled = true;
+   	}
+   	 private function popIt(src:String):void {
+        var img:Image = new Image();
+
+        img.addEventListener(MouseEvent.CLICK, img_click);
+        img.addEventListener(Event.COMPLETE, img_complete);
+        img.load(src);
+        img.toolTip = img.source.toString();
+        PopUpManager.addPopUp(img, this, true);
+    }
+ 
+   ]]>
+   </mx:Script>
+
+<mx:Panel width="100%" height="100%" layout="absolute" verticalCenter="0" horizontalCenter="0" borderColor="#F9FAFB" backgroundColor="#F9FAFB" cornerRadius="4" themeColor="#809FB6" alpha="1.0" borderStyle="none">
+                  <mx:VBox x="10.95" y="9.1" height="100%" verticalGap="25" width="100%">
+                                    <mx:HBox width="100%" height="25.454544">
+                                                      <mx:Label text="Izaberite Galeriju:" width="111" textAlign="right" fontWeight="bold"/>
+                                                      <mx:ComboBox width="367" change="getPhoto.send()" id="galleryId"></mx:ComboBox>
+                                                      <mx:HBox width="100%" horizontalGap="30">
+                                                                        <mx:HBox width="100%">
+                                                                                          <mx:Label text="Nova galerija:" fontWeight="bold"/>
+                                                                                          <mx:TextInput borderStyle="solid" width="50%" change="addGalleryChange" id="new_gallery_input"/>
+                                                                        </mx:HBox>
+                                                                        <mx:Button label="Dodaj novu galeriju" enabled="false" id="add_new_gallery_btn" click="doPostNewGallery()"/>
+                                                                        <mx:CheckBox id="isroot" label="Root galerija" enabled="true" selected="false"/>
+                                                      </mx:HBox>
+                                    </mx:HBox>
+                                    <mx:DataGrid height="175.98485" rowHeight="21"  dataProvider="{getPhoto.lastResult.gallery.picture}" id="dgPhoto" selectedIndex="0" width="100%">
+                                    <mx:columns>
+                                    <mx:DataGridColumn headerText="#" width="0.1" dataField="id_"/>
+                                    <mx:DataGridColumn headerText="Slika" width="0.1" dataField="img"/>
+                                    <mx:DataGridColumn headerText="Naslov" width="0.2" dataField="title"/>
+                                    <mx:DataGridColumn wordWrap="true" width="0.5" headerText="Opširnije" dataField="desc"/>
+                                    
+                                    </mx:columns>
+                                      </mx:DataGrid>
+                                    <mx:HBox height="29.621212" width="100%">
+                                                      <mx:Label text="Šifra slike:"/>
+                                                      <mx:TextInput width="34" editable="false" id="id_" borderStyle="none" text="{dgPhoto.selectedItem.id_}" backgroundColor="#F9FAFB"/>
+                                                      <mx:HBox width="100%" horizontalAlign="right" height="100%">
+                                                                        <mx:Button label="Оbriši sliku" click="deleteInfo(),getPhoto.send()" width="97" id="deletebtn"/>
+                                                      </mx:HBox>
+                                    </mx:HBox>
+                                    <mx:VBox height="48.10606" width="100%">
+                                                      <mx:Text text="Naslov:"/>
+                                                      <mx:TextInput id="title" text="{dgPhoto.selectedItem.title}" borderStyle="solid" editable="false" height="22.045454" width="100%"/>
+                                    </mx:VBox>
+                                    <mx:HBox height="123.0303" horizontalGap="25" width="100%">
+                                                      <mx:Image width="163.33334" height="114.84849" click="popIt(dgPhoto.selectedItem.img)" source="{dgPhoto.selectedItem.img}" scaleContent="true" useHandCursor="true" buttonMode="true"  id="slika"/>
+                                                      <mx:VBox height="118.86363" width="100%">
+                                                                        <mx:Text text="Opis:" width="87.045456" height="18.030302"/>
+                                                                        <mx:TextArea height="89.01515" id="des" text="{dgPhoto.selectedItem.desc}" verticalScrollPolicy="auto" horizontalScrollPolicy="auto" editable="false" wordWrap="false" width="100%"/>
+                                                      </mx:VBox>
+                                    </mx:HBox>
+                                    <gallery:uploader label="Button" id="loader2" width="100%"/>
+                                    <mx:HBox height="30.606062" horizontalGap="25" width="100%">
+                                                      <mx:Button label="Dodaj Novu sliku" click="addNew()" id="addbtn"/>
+                                                      <mx:Button label="Izmeni" click="disableUI()" id="updatebtn"/>
+                                                      <mx:Button label="Odustani" click="enableUI()" id="canclebtn" enabled="false"/>
+                                                      <mx:HBox width="100%" height="100%" horizontalAlign="right" horizontalGap="10">
+                                                                        <mx:Button label="Pošalji na server" click="sendInfo(),getPhoto.send(), enableUI()"/>
+                                                      </mx:HBox>
+                                    </mx:HBox>
+                  </mx:VBox>
+                  
+         </mx:Panel>
+</mx:Application>

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Canvas xmlns:mx="http://www.adobe.com/2006/mxml" width="424" height="64" creationComplete="init()">
+  <mx:Script><![CDATA[
+  	import mx.core.Application;
+  [Bindable]
+   private var urlRequest:URLRequest;
+   private var fileReferenceList:FileReferenceList;
+   private var serverSideScript:String = "http://mojapoljoprivreda.rs.sr/index.php/adminv2/slider/upload";
+  
+   private function init():void {
+    urlRequest = new URLRequest(serverSideScript);
+    fileReferenceList = new FileReferenceList();
+    fileReferenceList.addEventListener(Event.SELECT, fileSelectedHandler);
+   }
+   
+   private function uploadFile():void {
+    fileReferenceList.browse();
+   }
+   
+   private function fileSelectedHandler(event:Event):void {
+    var fileReference:FileReference;
+    var fileReferenceList:FileReferenceList = FileReferenceList(event.target);
+    var fileList:Array = fileReferenceList.fileList;
+    // get the first file that the user chose
+    fileReference = FileReference(fileList[0]);
+    // upload the file to the server side script
+    fileReference.addEventListener(Event.COMPLETE, uploadCompleteHandler);
+    fileReference.addEventListener(ProgressEvent.PROGRESS, handleProgress);
+    fileReference.upload(urlRequest);
+    
+    // update the status text
+    img1.text = "Upload u toku...";
+   }
+   
+   /* CHANGE YOURDOMAIN TO YOURS */
+   
+   	private function uploadCompleteHandler(event:Event):void {
+    	img1.text = event.target.name;
+    	imglink.text = "http://mojapoljoprivreda.rs.sr/images/slider/" + event.target.name
+    	Application.application.slika.source = imglink.text;
+   	}
+	
+	private function handleProgress(e:ProgressEvent):void
+  	{
+		img1.text = "Poslato " + (e.bytesLoaded / 1024) + " od " + (e.bytesTotal / 1024).toFixed(2) + "KB";
+
+  	}
+  ]]>
+ </mx:Script>
+ 
+  <mx:Button label="Browse" y="36" x="10" click="uploadFile();" enabled="false" id="browse"/>
+  <mx:Label x="86" y="38" id="img1"/>
+  <mx:Label x="10" y="10" text="Izaberi sliku:"/>
+  <mx:Label x="331" y="36"  id="imglink" visible="false" width="68" text="{Application.application.dgPhoto.selectedItem.img}"/>
+</mx:Canvas>
